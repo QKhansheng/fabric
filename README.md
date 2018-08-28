@@ -1,5 +1,7 @@
 Before Using the script you must deploy the python.fabric in your system (RH/CentOS)
+
 Here is the setup:
+
 	1: download python source code by following this URL:https://www.python.org/downloads/source/ , Our script is coding on python27
 	
 	2: start deploy python in your system by the setup 
