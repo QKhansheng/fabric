@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-#Date£º2018/08/27
-#Author£ºqiankunhansheng
-#Mail£ºacths@outlook.com
-#Features£ºUse to deploy software in centOS such as JDK nginx memcache ...(Continuous update)
-#Version£º1.0
+#Date: 2018/08/27
+#Author: qiankunhansheng
+#Mail: acths@outlook.com
+#Features: Use to deploy software in centOS such as JDK nginx memcache ...(Continuous update)
+#Version: 1.0
 
 from __future__ import with_statement
 from fabric.api import *
@@ -15,15 +15,11 @@ import sys
 
 #set information about ssh host list
 env.roledefs = {
-		'host1' : ['root@192.168.1.2'] ,
-		'host2' : ['root@192.168.1.3'] ,
-		'host3' : ['root@192.168.1.4'] ,
+		'host1' : ['root@192.168.39.73'] ,
 }
-
+	
 env.passwords = {
-		'root@192.168.1.2:22' : '123456' ,
-		'root@192.168.1.3:22' : '123456' ,
-		'root@192.168.1.4:22' : '123456' ,
+		'root@192.168.39.73:22' : '123456' ,
 }
 
 #set error info with red color and warning with pink color
@@ -35,23 +31,18 @@ env.linewise = True
 #set all tasks excute with parallel mode
 env.parallel = True
 #set the number of concurrent processes default by cpu core
-env.pool_size = 4
+env.pool_size = 2
 
 #set base parameter in system enviroment 
-@roles('host1' , 'host2' , 'host3')
 def setBaseEnv():
 	host1 = str(env.roledefs["host1"]).split('@' , 1)[1]
-	host2 = str(env.roledefs["host2"]).split('@' , 1)[1]
-	host3 = str(env.roledefs["host3"]).split('@' , 1)[1]
 	
 	hostIP1 = host1.split("'" ,1)[0]
-	hostIP2 = host2.split("'" ,1)[0]
-	hostIP3 = host3.split("'" ,1)[0]
 	
 	with settings(warning_only = True):
 		#set fast DNS of hosts
-		run('echo -e "{0} host1\n{1} host2\n{2} host3\n" >> /etc/hosts'.format(hostIP1 , hostIP2 , hostIP3)
-		run("cat hosts")
+		run('echo -e "{0} host1" >> /etc/hosts'.format(hostIP1))
+		run('cat /etc/hosts')
 
 		#set language
 		run("echo LANG=en_US.UTF-8 > /etc/sysconfig/i18n")
@@ -90,22 +81,21 @@ def setBaseEnv():
 
 #display the info of help		
 def help():
-        print("Usage list : fab setBaseEnv\n"
-                "                   fab -H hostIPorName deployJDK\n"
-                "                   fab -H hostIPorName deployMemcache\n"
-				"					fab -H hostIPorName startMemcache:memory=128,user=root,IP=127.0.0.1,port=12000,connections=1024,pid=/tmp/memcached.pid\n"
-				"					fab -H hostIPorName deployNginx\n"					 
-				"					fab -H hostIPorName startNginx\n"
-				"					"
-				"					"
-				"					"
-				"					"
-				"					"
-				"					"
-				"					"
-				"					"
-				)
-						
+        print("Usage list : fab -H IP setBaseEnv\n"
+		"             fab -H IP deployJDK\n"
+                "             fab -H IP deployMemcache\n"
+		"	     fab -H IP startMemcache:memory=128,user=root,IP=127.0.0.1,port=12000,connections=1024,pid=/tmp/memcached.pid\n"
+		"	     fab -H IP deployNginx\n"					 
+		"	     fab -H IP startNginx\n"
+		"					"
+		"					"
+		"					"
+		"					"
+		"					"
+		"					"
+		"					"
+		"					"
+		)
 
 #deploy java jdk
 def deployJDK():
@@ -116,7 +106,7 @@ def deployJDK():
 		run('echo -e "JAVA_HOME=$JAVA_HOME\nCLASSPATH=.:$JAVA_HOME/lib:$JAVA_HOME/jre/lib\nPATH=$JAVA_HOME/bin:$PATH:$JAVA_HOME/jre/bin\nexport JAVA_HOME CLASSPATH PATH" >> profile')
 		run('source profile')
 		run('java -version')
-		
+	
 #deploy memcache
 def deployMemcache():
 	with cd('/software'):
@@ -126,21 +116,19 @@ def deployMemcache():
 		run('./configure --prefix=/software/libevent')
 		run('make')
 		run('make install')
-	with cd('/software/memcached-1.4.29')
+	with cd('/software/memcached-1.4.29'):
 		run('./configure --prefix=/software/memcached --with-libevent=/software/libevent')
 		run('make')
 		run('make install')
 
 #start memcache
 def startMemcache(memory , user , IP , port , connections , pid):
-	with cd('/software/memcache/bin'):
+	with cd('/software/memcached/bin'):
 		run('./memcached -d -m %s -u %s -l %s -p %s -c %s -P %s' % (memory , user , IP , port , connections , pid))
 		
 #deploy nginx
 def deployNginx():
 	with cd('/software'):
-		run('service httpd stop')
-		run('chkconfig httpd off')
 		run('unzip nginx.zip')
 		run('tar -xf nginx-1.8.1.tar.gz')
 		run('tar -xf openssl-1.0.2j.tar.gz')
