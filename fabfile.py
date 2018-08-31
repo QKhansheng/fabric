@@ -142,7 +142,86 @@ def deployNginx():
 		run('make install')
 		run('/software/nginx/sbin/nginx -t')
 		
-#start nginx after 
+#start nginx
 def startNginx():
 	with cd('/software/nginx/sbin'):
 		run('./nginx')
+
+#deploy Redis by cluster mode , it requires at least 3 machines ,each one will be runing 2 instances 
+def deployRedis():
+	with cd('/software'):
+		run('tar -xf redis-3.2.8.tar.gz')
+
+	with cd('/software/redis-3.2.8'):
+		run('make')
+		run('make install PREFIX=/software/redis')
+		run('mkdir /software/redis-cluster')
+		run('mkdir /software/redis-cluster/redis6371')
+		run('mkdir /software/redis-cluster/redis6372')
+		run('cp /software/redis/bin/* /software/redis-cluster/redis6371')
+		run('cp /software/redis/bin/* /software/redis-cluster/redis6372')
+		run("sed -i 's/127.0.0.1/0.0.0.0/g' redis.conf")
+		run("sed -i '/protected-mode/s/yes/no/' redis.conf")
+		run("sed -i '/daemonize no/s/no/yes/' redis.conf")
+		run("sed -i '/cluster-enabled/s/^.*#//' redis.conf")
+		run('cp redis.conf /software/redis-cluster/redis6371/redis6371.conf')
+		run('cp redis.conf /software/redis-cluster/redis6372/redis6372.conf')
+
+	with cd('/software/redis-cluster/redis6371'):
+		run("sed -i '/port 6379/s/6379/6371/' redis6371.conf")
+		run("sed -i '/pidfile/s/6379/6371/' redis6371.conf")
+		run("sed -i '/logfile/s/{0}{1}/{2}{3}{4}/' redis6371.conf".format('"' , '"' , '"' , "redis6371.log" , '"'))
+	
+	with cd('/software/redis-cluster/redis6372'):
+		run("sed -i '/port 6379/s/6379/6372/' redis6372.conf")
+		run("sed -i '/pidfile/s/6379/6372/' redis6372.conf")
+		run("sed -i '/logfile/s/{0}{1}/{2}{3}{4}/' redis6372.conf".format('"' , '"' , '"' , "redis6372.log" , '"'))
+
+	run('cp /software/redis-3.2.8/src/redis-trib.rb /software/redis-cluster')
+
+#start Redis
+def startRedis():
+	with cd('/software/redis-cluster/redis6371'):
+		run('./redis-server /software/redis-cluster/redis6371/redis6371.conf')
+	with cd('/software/redis-cluster/redis6372'):
+		run('./redis-server /software/redis-cluster/redis6372/redis6372.conf')
+
+#deploy ruby
+def deployRuby():
+	with cd('/software'):
+		run('mkdir ruby')
+		run('unzip ruby.zip')
+		run('tar -xf ruby-2.4.1.tar.gz')
+		run('tar -xf openssl-1.0.1f.tar.gz')
+	with cd('/software/ruby-2.4.1'):
+		run('./configure --prefix=/software/ruby')
+		run('make')
+		run('make install')
+		run('ln -s /software/ruby/bin/ruby /usr/bin/ruby')
+		run('ln -s /software/ruby/bin/gem /usr/bin/gem')
+	with cd('/software/openssl-1.0.1f'):
+		run('./config -fPIC --prefix=/software/openssl1f enable-shared')
+		run('./config -t')
+		run('make depend')
+		run('make install')
+	with cd('/software/ruby-2.4.1/ext/zlib'):
+		run('yum install -y zlib zlib-devel')
+		run('ruby extconf.rb')
+		run("sed -i '16a top_srcdir = /software/ruby-2.4.1' Makefile")
+		run('make')
+		run('make install')
+	with cd('/software/ruby-2.4.1/ext/openssl'):
+		run('ruby extconf.rb --with-openssl-include=/software/openssl1f/include --with-openssl-lib=/software/openssl1f/lib')
+		run("sed -i '16a top_srcdir = /software/ruby-2.4.1' Makefile")
+		run('make')
+		run('make install')
+	with cd('/software'):
+		run('gem install redis-4.0.1.gem')
+		run('gem list')
+
+#create redis cluster
+def createRedisClu():
+	with cd('/software/redis-cluster'):
+		run('./redis-trib.rb create --replicas 1 host1:6371 host1:6372 host2:6371 host2:6372 host3:6371 host3:6372')
+
+
